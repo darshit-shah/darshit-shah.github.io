@@ -1,4 +1,4 @@
-﻿d3.svg.floatingScale = function () {
+d3.svg.floatingScale = function () {
     "use strict";
     var that = this;
     var scaleValues = [{ y: 0, value: 0 }, { y: 1, value: 1}];
@@ -12,6 +12,7 @@
     var min = +Infinity;
     var max = -Infinity;
     var tickFormat = null;
+    var lineWidth = 3;
 
     function floatingScale(value) {
         if (!isFinite(value)) {
@@ -36,6 +37,8 @@
             .attr("x2", width)
             .attr("stroke-dasharray", "5,5")
             .attr("index", function (d, i) { return i })
+            .style("cursor", "pointer")
+            .style("stroke-width", lineWidth + "px")
             .call(drag)//drag magic - built in d3 behavior: https://github.com/mbostock/d3/wiki/Drag-Behavior#wiki-drag;
             ;
         floatingLines.exit().remove();
@@ -51,13 +54,36 @@
                     return floatingScale(d.value);
                 });
 
+        var floatingCircle = chart.selectAll(".y.axis.floatingCircle").data(scaleLines);
+        floatingCircle.enter().append("circle")
+                            .attr("class", "y axis floatingCircle")
+                            .attr("cx", width + 20)
+                            .attr("r", 20)
+                            .style("stroke", "red")
+                            .style("stroke-width", "3")
+                            .style("fill", "transparent")
+                            .attr("index", function (d, i) { return i })
+                            .style("cursor", "pointer")
+                            .call(drag) //drag magic - built in d3 behavior: https://github.com/mbostock/d3/wiki/Drag-Behavior#wiki-drag;
+                            ;
+        floatingCircle.exit().remove();
+
+        chart.selectAll(".y.axis.floatingCircle")
+                        .transition()
+                        .delay(delay)
+                        .duration(duration)
+                        .attr("cy", function (d) { return floatingScale(d.value) })
+                        ;
+
         var floatingLabel = chart.selectAll(".y.axis.floatingLabel").data(scaleLines);
         floatingLabel.enter().append("text")
                 .attr("class", "y axis floatingLabel")
-                .attr("x", width + 2)
+                .attr("x", width + 20)
                 .attr("index", function (d, i) { return i })
-                .attr("text-anchor", "start")
+                .attr("text-anchor", "middle")
                 .attr("alignment-baseline", "middle")
+                .style("cursor", "pointer")
+                //.style("font-size", "12px")
                 .call(drag) //drag magic - built in d3 behavior: https://github.com/mbostock/d3/wiki/Drag-Behavior#wiki-drag;
                 ;
         floatingLabel.exit().remove();
@@ -73,6 +99,8 @@
                 return d3.format(tickFormat)(d.value);
             });
 
+
+
         return floatingScale;
     }
 
@@ -82,6 +110,16 @@
             scaleValues[index].y += d3.event.dy;
             updateLocalChart(0, 0);
         }
+    }
+
+    function dragstart(dragged) {
+        var index = parseInt(d3.select(dragged).attr("index"));
+        d3.selectAll(".floating[index='" + index + "']").style("stroke-width", (lineWidth * 2) + 'px');
+    }
+
+    function dragend(dragged) {
+        var index = parseInt(d3.select(dragged).attr("index"));
+        d3.selectAll(".floating[index='" + index + "']").style("stroke-width", lineWidth + 'px');
     }
 
     function updateLocalChart(delay, duration) {
@@ -219,6 +257,9 @@
             throw "chart() only accepts an abject";
         }
         chart = c;
+        //        d3.select(chart)
+        //        .on("touchstart", nozoom)
+        //        .on("touchmove", nozoom);
         return floatingScale;
     }
 
@@ -233,8 +274,11 @@
     var drag = d3.behavior.drag()
             .origin(Object)
             .on("drag", function () { dragmove(this); })
+            .on("dragstart", function () { dragstart(this); })
+            .on("dragend", function () { dragend(this); });
 
-
-
+    //    function nozoom() {
+    //        d3.event.preventDefault();
+    //    }
     return floatingScale;
 };
